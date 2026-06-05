@@ -13,7 +13,6 @@ import {
   getLastUpdate,
   makeActivityItems,
 } from "./services/flaskApi";
-import "./App.css";
 
 const MAX_ALERT_HISTORY = 50;
 
@@ -258,9 +257,9 @@ function App() {
   };
 
   return (
-    <main className="app-shell">
+    <main className="grid min-h-screen place-items-center bg-[radial-gradient(circle_at_top_left,rgba(37,99,235,0.12),transparent_34%),linear-gradient(180deg,#f8fbff_0%,#eef5ff_100%)] p-7 max-[520px]:bg-white max-[520px]:p-0">
       <section
-        className="phone-frame"
+        className="relative flex h-[min(844px,calc(100vh-56px))] min-h-[720px] w-[min(100%,390px)] flex-col overflow-hidden rounded-[22px] border border-[#cfd8e6] bg-white shadow-[0_24px_70px_rgba(26,47,79,0.18)] max-[520px]:h-screen max-[520px]:min-h-screen max-[520px]:w-full max-[520px]:rounded-none max-[520px]:border-0 max-[520px]:shadow-none"
         aria-label="음향 분석 기반 안심 모니터링 시스템"
       >
         <AppHeader
@@ -269,7 +268,7 @@ function App() {
           onAlertClick={openLatestAlert}
         />
 
-        <div className="screen-body">
+        <div className="min-h-0 flex-1 overflow-auto px-4 pb-[180px] pt-1.5">
           {activeTab === "dashboard" && (
             <Dashboard
               activities={activities}
