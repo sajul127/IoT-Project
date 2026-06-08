@@ -16,6 +16,47 @@ import {
 
 const MAX_ALERT_HISTORY = 50;
 
+const isBabyMode = (event) =>
+  String(event?.mode ?? "").trim().toLowerCase() === "baby";
+
+const getAlertSource = (event) => {
+  if (event?.alertSource === "baby_cry") {
+    return isBabyMode(event) ? "baby_cry" : null;
+  }
+
+  if (event?.alertSource) {
+    return event.alertSource;
+  }
+
+  if (event?.message?.includes("SOS 버튼")) {
+    return "button";
+  }
+
+  if (
+    isBabyMode(event) &&
+    (event?.message?.includes("아기 울음") ||
+      event?.message?.includes("baby_cry"))
+  ) {
+    return "baby_cry";
+  }
+
+  return null;
+};
+
+const shouldOpenAlertModal = (alert) => {
+  const alertSource = getAlertSource(alert?.raw);
+
+  return (
+    alert?.raw?.acknowledged === false &&
+    alert?.raw?.alertMuted !== true &&
+    (alertSource === "button" ||
+      (alertSource === "baby_cry" && isBabyMode(alert?.raw)))
+  );
+};
+
+const requiresServerAcknowledge = (alert) =>
+  alert?.raw?.sos && getAlertSource(alert.raw) !== "baby_cry";
+
 const mergeCurrentAlert = (currentAlerts, incomingAlert) => {
   if (!incomingAlert) {
     return currentAlerts;
@@ -30,7 +71,7 @@ const mergeCurrentAlert = (currentAlerts, incomingAlert) => {
             ...incomingAlert,
             id: alert.id,
             time: alert.time,
-            unread: alert.unread,
+            unread: incomingAlert.unread && alert.unread,
           }
         : alert,
     );
@@ -77,6 +118,7 @@ function App() {
   }, [latestEvent]);
   const unreadAlerts = alerts.filter((alert) => alert.unread);
   const activeAlert = alerts.find((alert) => alert.id === activeAlertId);
+  const activeAlertRequiresConfirm = requiresServerAcknowledge(activeAlert);
   const activities = useMemo(() => makeActivityItems(alerts), [alerts]);
   const remainingCount = activeAlert
     ? unreadAlerts.filter((alert) => alert.id !== activeAlert.id).length
@@ -139,7 +181,7 @@ function App() {
       return;
     }
 
-    const sosAlert = unreadAlerts.find((alert) => alert.raw?.sos);
+    const sosAlert = unreadAlerts.find(shouldOpenAlertModal);
 
     if (sosAlert) {
       setActiveAlertId(sosAlert.id);
@@ -220,7 +262,7 @@ function App() {
     setIsAcknowledging(true);
 
     try {
-      if (activeAlert?.raw?.sos) {
+      if (activeAlertRequiresConfirm) {
         await acknowledgeAlert(socketRef.current);
       }
 
@@ -303,6 +345,7 @@ function App() {
             onClose={closeAlert}
             onViewDetail={viewAlertDetail}
             onConfirm={acknowledgeAndClose}
+            requiresConfirm={activeAlertRequiresConfirm}
             isConfirming={isAcknowledging}
           />
         )}

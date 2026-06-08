@@ -6,6 +6,7 @@ export function AlertModal({
   onClose,
   onViewDetail,
   onConfirm,
+  requiresConfirm = false,
   isConfirming = false,
 }) {
   if (!alert) {
@@ -51,7 +52,7 @@ export function AlertModal({
         <button
           className="mt-2 h-10 w-full cursor-pointer rounded-lg border border-[#e2e8f0] bg-white font-extrabold text-[#334155] disabled:cursor-not-allowed disabled:opacity-65"
           type="button"
-          onClick={alert.raw?.sos ? onConfirm : onClose}
+          onClick={requiresConfirm ? onConfirm : onClose}
           disabled={isConfirming}
         >
           확인

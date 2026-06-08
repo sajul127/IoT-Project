@@ -1,7 +1,7 @@
 import { MetricCard } from '../components/MetricCard'
 import { activities } from '../data/monitoringData'
-import { ArrowRightIcon, BabyIcon, BarsIcon, ShieldIcon } from '../icons'
-import { getDistance, getLastUpdate, getModeLabel, getStatusLabel } from '../services/flaskApi'
+import { ArrowRightIcon, BabyIcon, ShieldIcon } from '../icons'
+import { getLastUpdate, getModeLabel, getStatusLabel } from '../services/flaskApi'
 
 export function Dashboard({
   activities: liveActivities = activities,
@@ -42,9 +42,8 @@ export function Dashboard({
         {connection?.message ?? '라즈베리파이 연결 중'}
       </div>
 
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid gap-3">
         <MetricCard icon={BabyIcon} label="모니터링 모드" value={getModeLabel(latestEvent)} />
-        <MetricCard icon={BarsIcon} label="거리" value={getDistance(latestEvent)} accent="violet" />
       </div>
 
       <section className="rounded-lg border border-[#e0e7f0] bg-white p-4 shadow-[0_8px_20px_rgba(15,23,42,0.06)]">

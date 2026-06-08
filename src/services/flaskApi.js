@@ -32,6 +32,30 @@ const formatDateTime = (value) => {
 
 const normalizeStatus = (status) => String(status ?? '').trim().toLowerCase()
 
+const isBabyMode = (status) => normalizeStatus(status?.mode) === 'baby'
+
+const getAlertSource = (status) => {
+  if (status?.alertSource === 'baby_cry') {
+    return isBabyMode(status) ? 'baby_cry' : null
+  }
+
+  if (status?.alertSource) {
+    return status.alertSource
+  }
+
+  const message = status?.message ?? ''
+
+  if (message.includes('SOS 버튼')) {
+    return 'button'
+  }
+
+  if (isBabyMode(status) && (message.includes('아기 울음') || message.includes('baby_cry'))) {
+    return 'baby_cry'
+  }
+
+  return null
+}
+
 const getTone = (status) => {
   if (status?.sos || normalizeStatus(status?.status) === 'sos') {
     return 'danger'
@@ -52,35 +76,68 @@ const getTone = (status) => {
 
 const getStatusText = (status) => {
   const normalizedStatus = normalizeStatus(status?.status)
+  const message = status?.message ?? ''
+  const alertSource = getAlertSource(status)
 
   if (status?.sos || normalizedStatus === 'sos') {
+    if (alertSource === 'baby_cry') {
+      return {
+        title: '아기 울음 감지',
+        message: message || '아기 울음으로 의심되는 소리가 감지되었습니다.',
+      }
+    }
+
+    if (alertSource === 'button') {
+      return {
+        title: 'SOS 버튼 알림',
+        message: message || 'SOS 버튼이 눌렸습니다.',
+      }
+    }
+
     return {
       title: 'SOS 알림',
-      message: status?.message ?? '보호자 호출 신호가 감지되었습니다.',
+      message: message || '보호자 호출 신호가 감지되었습니다.',
     }
   }
 
   if (normalizedStatus === 'danger' || normalizedStatus === 'emergency') {
+    if (alertSource === 'baby_cry') {
+      return {
+        title: '아기 울음 감지',
+        message: message || '아기 울음으로 의심되는 소리가 감지되었습니다.',
+      }
+    }
+
     return {
       title: '위험 감지',
-      message: status?.message ?? '위험 상황이 감지되었습니다.',
+      message: message || '위험 상황이 감지되었습니다.',
     }
   }
 
   if (normalizedStatus === 'warning' || normalizedStatus === 'error') {
     return {
       title: '주의 필요',
-      message: status?.message ?? '주의가 필요한 상태입니다.',
+      message: message || '주의가 필요한 상태입니다.',
     }
   }
 
   return {
     title: '정상 상태',
-    message: status?.message ?? '현재 감지 상태가 정상입니다.',
+    message: message || '현재 감지 상태가 정상입니다.',
   }
 }
 
 const getStatusSignature = (status) => {
+  const alertSource = getAlertSource(status)
+
+  if (alertSource === 'baby_cry') {
+    return 'danger:baby-cry'
+  }
+
+  if (alertSource === 'button') {
+    return 'danger:sos-button'
+  }
+
   if (status?.sos || normalizeStatus(status?.status) === 'sos') {
     return 'danger:sos'
   }
@@ -94,6 +151,7 @@ const buildStatusAlert = (status, readAlertIds) => {
   const detectedAt = status.updatedAt ?? status.timestamp ?? new Date().toISOString()
   const signature = getStatusSignature(status)
   const id = `${signature}:${detectedAt}`
+  const isMuted = status?.alertMuted === true || status?.acknowledged === true
 
   return {
     id,
@@ -103,7 +161,7 @@ const buildStatusAlert = (status, readAlertIds) => {
     location: status.location ?? '거실',
     tone,
     icon: iconByTone[tone],
-    unread: tone !== 'safe' && !readAlertIds.has(id),
+    unread: tone !== 'safe' && !isMuted && !readAlertIds.has(id),
     raw: status,
   }
 }
@@ -260,11 +318,6 @@ export function getModeLabel(status) {
 export function getSoundLevel(status) {
   const soundLevel = status?.soundLevel ?? status?.sound_level
   return Number.isFinite(Number(soundLevel)) ? `${soundLevel} dB` : '수신 대기'
-}
-
-export function getDistance(status) {
-  const distance = status?.distance
-  return Number.isFinite(Number(distance)) ? `${distance} cm` : '수신 대기'
 }
 
 export function getLastUpdate(device, event) {

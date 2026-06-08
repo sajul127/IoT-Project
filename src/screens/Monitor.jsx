@@ -1,7 +1,6 @@
 import { MetricCard } from "../components/MetricCard";
 import { BarsIcon, MicIcon, ShieldIcon } from "../icons";
 import {
-  getDistance,
   getModeLabel,
   getStatusLabel,
 } from "../services/flaskApi";
@@ -28,10 +27,14 @@ export function Monitor({
         <div>
           <p className="mb-1 mt-0 text-xs font-bold opacity-85">현재 모드</p>
           <strong className="text-sm text-[#111827]">
-            {getModeLabel(latestEvent)} <span className="font-bold text-[#64748b]">(실시간 감지)</span>
+            {getModeLabel(latestEvent)}{" "}
+            <span className="font-bold text-[#64748b]">(실시간 감지)</span>
           </strong>
         </div>
-        <div className="grid grid-cols-[repeat(2,minmax(58px,1fr))] gap-1.5" aria-label="모니터링 모드 변경">
+        <div
+          className="grid grid-cols-[repeat(2,minmax(58px,1fr))] gap-1.5"
+          aria-label="모니터링 모드 변경"
+        >
           <button
             type="button"
             className={`h-[38px] cursor-pointer rounded-lg border text-xs font-extrabold disabled:cursor-not-allowed disabled:opacity-65 ${
@@ -67,22 +70,33 @@ export function Monitor({
 
       <section className="min-h-40 rounded-lg border border-[#e0e7f0] bg-white p-4 shadow-[0_8px_20px_rgba(15,23,42,0.06)]">
         <div className="mb-2.5 flex items-center justify-between gap-3">
-          <h2 className="m-0 text-sm font-extrabold text-[#111827]">실시간 음성 파형 ({latestEvent?.soundLevelDb ?? 0} dB)</h2>
+          <h2 className="m-0 text-sm font-extrabold text-[#111827]">
+            실시간 음성 파형 ({latestEvent?.soundLevelDb ?? 0} dB)
+          </h2>
           <div className="flex items-center gap-1.5 whitespace-nowrap text-[11px] font-bold text-[#64748b]">
             <span className="h-[7px] w-[7px] rounded-full bg-[#10b981]" />
             실시간 수집 중
           </div>
         </div>
 
-        <div className="flex h-20 items-center gap-1 pt-2" aria-label="실시간 음성 파형">
+        <div
+          className="flex h-20 items-center gap-1 pt-2"
+          aria-label="실시간 음성 파형"
+        >
           {waveform.map((height, index) => (
-            <i className="min-w-0.5 flex-1 rounded-full bg-[#10b981]" key={index} style={{ height: `${height}%` }} />
+            <i
+              className="min-w-0.5 flex-1 rounded-full bg-[#10b981]"
+              key={index}
+              style={{ height: `${height}%` }}
+            />
           ))}
         </div>
       </section>
 
       <section className="min-h-40 rounded-lg border border-[#e0e7f0] bg-white p-4 shadow-[0_8px_20px_rgba(15,23,42,0.06)]">
-        <h2 className="m-0 text-sm font-extrabold text-[#111827]">주파수 스펙트럼 ({latestEvent?.soundStatus ?? "Normal"})</h2>
+        <h2 className="m-0 text-sm font-extrabold text-[#111827]">
+          주파수 스펙트럼 ({latestEvent?.soundStatus ?? "Normal"})
+        </h2>
 
         <div
           className="relative mt-3.5 h-[130px] bg-[repeating-linear-gradient(to_right,transparent_0,transparent_39px,#e9eef5_40px),linear-gradient(#fff,#fff)] py-1.5 pl-[30px] pr-0 pb-[22px]"
@@ -134,16 +148,9 @@ export function Monitor({
         />
 
         <MetricCard
-          icon={BarsIcon}
-          label="거리"
-          value={getDistance(latestEvent)}
-          accent="violet"
-        />
-
-        <MetricCard
-          icon={ShieldIcon}
-          label="SOS"
-          value={latestEvent?.sos ? "감지됨" : "정상"}
+          icon={MicIcon}
+          label="음향 상태"
+          value={latestEvent?.soundStatus ?? "Normal"}
           accent="green"
         />
 
@@ -155,9 +162,19 @@ export function Monitor({
         />
 
         <MetricCard
-          icon={MicIcon}
-          label="음향 상태"
-          value={latestEvent?.soundStatus ?? "Normal"}
+          icon={ShieldIcon}
+          label="SOS"
+          value={
+            !latestEvent?.sos
+              ? "정상"
+              : latestEvent?.message?.includes("아기 울음")
+                ? "아기 울음"
+                : latestEvent?.message?.includes("활동 감지 안 됨")
+                  ? "활동 없음"
+                  : latestEvent?.message?.includes("SOS 버튼")
+                    ? "SOS 버튼"
+                    : "긴급상황"
+          }
           accent="green"
         />
       </div>
