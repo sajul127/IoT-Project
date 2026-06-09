@@ -19,9 +19,16 @@ const MAX_ALERT_HISTORY = 50;
 const isBabyMode = (event) =>
   String(event?.mode ?? "").trim().toLowerCase() === "baby";
 
+const isElderlyMode = (event) =>
+  String(event?.mode ?? "").trim().toLowerCase() === "elderly";
+
 const getAlertSource = (event) => {
   if (event?.alertSource === "baby_cry") {
     return isBabyMode(event) ? "baby_cry" : null;
+  }
+
+  if (event?.alertSource === "elderly_silence") {
+    return isElderlyMode(event) ? "elderly_silence" : null;
   }
 
   if (event?.alertSource) {
@@ -40,6 +47,15 @@ const getAlertSource = (event) => {
     return "baby_cry";
   }
 
+  if (
+    isElderlyMode(event) &&
+    (event?.message?.includes("무음") ||
+      event?.message?.includes("silence") ||
+      event?.message?.includes("no_sound"))
+  ) {
+    return "elderly_silence";
+  }
+
   return null;
 };
 
@@ -50,7 +66,8 @@ const shouldOpenAlertModal = (alert) => {
     alert?.raw?.acknowledged === false &&
     alert?.raw?.alertMuted !== true &&
     (alertSource === "button" ||
-      (alertSource === "baby_cry" && isBabyMode(alert?.raw)))
+      (alertSource === "baby_cry" && isBabyMode(alert?.raw)) ||
+      (alertSource === "elderly_silence" && isElderlyMode(alert?.raw)))
   );
 };
 

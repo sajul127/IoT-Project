@@ -1,9 +1,6 @@
 import { MetricCard } from "../components/MetricCard";
 import { BarsIcon, MicIcon, ShieldIcon } from "../icons";
-import {
-  getModeLabel,
-  getStatusLabel,
-} from "../services/flaskApi";
+import { getModeLabel, getStatusLabel } from "../services/flaskApi";
 
 export function Monitor({
   connection,
@@ -164,17 +161,7 @@ export function Monitor({
         <MetricCard
           icon={ShieldIcon}
           label="SOS"
-          value={
-            !latestEvent?.sos
-              ? "정상"
-              : latestEvent?.message?.includes("아기 울음")
-                ? "아기 울음"
-                : latestEvent?.message?.includes("활동 감지 안 됨")
-                  ? "활동 없음"
-                  : latestEvent?.message?.includes("SOS 버튼")
-                    ? "SOS 버튼"
-                    : "긴급상황"
-          }
+          value={latestEvent?.sos ? "SOS 버튼" : "정상"}
           accent="green"
         />
       </div>

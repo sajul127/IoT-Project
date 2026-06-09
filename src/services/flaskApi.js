@@ -34,9 +34,15 @@ const normalizeStatus = (status) => String(status ?? '').trim().toLowerCase()
 
 const isBabyMode = (status) => normalizeStatus(status?.mode) === 'baby'
 
+const isElderlyMode = (status) => normalizeStatus(status?.mode) === 'elderly'
+
 const getAlertSource = (status) => {
   if (status?.alertSource === 'baby_cry') {
     return isBabyMode(status) ? 'baby_cry' : null
+  }
+
+  if (status?.alertSource === 'elderly_silence') {
+    return isElderlyMode(status) ? 'elderly_silence' : null
   }
 
   if (status?.alertSource) {
@@ -51,6 +57,13 @@ const getAlertSource = (status) => {
 
   if (isBabyMode(status) && (message.includes('아기 울음') || message.includes('baby_cry'))) {
     return 'baby_cry'
+  }
+
+  if (
+    isElderlyMode(status) &&
+    (message.includes('무음') || message.includes('silence') || message.includes('no_sound'))
+  ) {
+    return 'elderly_silence'
   }
 
   return null
@@ -87,10 +100,24 @@ const getStatusText = (status) => {
       }
     }
 
+    if (alertSource === 'elderly_silence') {
+      return {
+        title: '독거노인 무음 감지',
+        message: message || '10초 이상 소리가 감지되지 않았습니다.',
+      }
+    }
+
     if (alertSource === 'button') {
       return {
         title: 'SOS 버튼 알림',
         message: message || 'SOS 버튼이 눌렸습니다.',
+      }
+    }
+
+    if (alertSource === 'elderly_silence') {
+      return {
+        title: '독거노인 무음 감지',
+        message: message || '10초 이상 소리가 감지되지 않았습니다.',
       }
     }
 
@@ -132,6 +159,10 @@ const getStatusSignature = (status) => {
 
   if (alertSource === 'baby_cry') {
     return 'danger:baby-cry'
+  }
+
+  if (alertSource === 'elderly_silence') {
+    return 'danger:elderly-silence'
   }
 
   if (alertSource === 'button') {

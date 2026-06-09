@@ -1,4 +1,4 @@
-import { AlertIcon } from '../icons'
+import { AlertIcon } from "../icons";
 
 export function AlertModal({
   alert,
@@ -10,11 +10,14 @@ export function AlertModal({
   isConfirming = false,
 }) {
   if (!alert) {
-    return null
+    return null;
   }
 
   return (
-    <div className="absolute inset-0 z-10 grid place-items-center bg-[#0f172a]/70 p-6" role="presentation">
+    <div
+      className="absolute inset-0 z-10 grid place-items-center bg-[#0f172a]/70 p-6"
+      role="presentation"
+    >
       <section
         className="w-full max-w-[270px] rounded-lg bg-white px-[22px] pb-[18px] pt-7 text-center shadow-[0_18px_44px_rgba(0,0,0,0.28)]"
         role="dialog"
@@ -25,7 +28,15 @@ export function AlertModal({
           <AlertIcon />
         </div>
         <h2 className="mb-2 mt-0 text-xl text-[#ef4444]">{alert.title}</h2>
-        <p className="mb-3 mt-0 text-sm text-[#475569]">{alert.message}</p>
+        <p className="mb-3 mt-0 text-sm text-[#475569]">
+          {alert.message}
+
+          {alert.babyCryScore != null && (
+            <span className="ml-1 font-bold text-[#ef4444]">
+              ({alert.babyCryScore}%)
+            </span>
+          )}
+        </p>
         <dl className="mb-4 mt-0 text-left text-[13px] text-[#334155]">
           <div className="flex justify-center gap-1.5">
             <dt>시간:</dt>
@@ -59,5 +70,5 @@ export function AlertModal({
         </button>
       </section>
     </div>
-  )
+  );
 }
