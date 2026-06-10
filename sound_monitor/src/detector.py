@@ -192,205 +192,98 @@ class AIAudioDetector:
 
         return None
 
-    def observe(
-        self,
-        sound_db_or_audio,
-        sample_rate=None,
-    ):
+    def observe(self, sound_db_or_audio, sample_rate=None):
         if not self.running:
             return
 
         now = time.time()
 
-        if isinstance(
-            sound_db_or_audio,
-            (np.ndarray, list),
-        ):
-            audio_1d = np.asarray(
-                sound_db_or_audio,
-                dtype=np.float32,
-            )
+        if isinstance(sound_db_or_audio, (np.ndarray, list)):
+            audio_1d = np.asarray(sound_db_or_audio, dtype=np.float32)
 
             if sample_rate == 48000:
-                target_len = int(
-                    len(audio_1d) * 44100 / 48000
-                )
+                target_len = int(len(audio_1d) * 44100 / 48000)
+                audio_1d = resample(audio_1d, target_len).astype(np.float32)
 
-                audio_1d = resample(
-                    audio_1d,
-                    target_len,
-                ).astype(np.float32)
-
-            current_volume = (
-                np.sqrt(np.mean(audio_1d**2))
-                * 1000
-            )
+            current_volume = np.sqrt(np.mean(audio_1d**2)) * 1000
 
             # ==========================
-            # 독거노인 모드
+            # 독거노인 모드 (무음 감지)
             # ==========================
             if self.mode == "elderly":
-                if current_volume > 50.0:
+                if current_volume > 15.0:
                     self.last_sound_time = now
 
-                elapsed_silence = (
-                    now - self.last_sound_time
-                )
+                elapsed_silence = now - self.last_sound_time
 
-                print(
-                    f"⏳ [독거노인] 볼륨: "
-                    f"{current_volume:.1f} | "
-                    f"무음: {elapsed_silence:.1f}초 / 10초"
-                )
+                print(f"⏳ [독거노인] 볼륨: {current_volume:.1f} | 무음: {elapsed_silence:.1f}초 / 10초")
 
-                if (
-                    elapsed_silence
-                    > self.SILENCE_THRESHOLD_SEC
-                ):
-                    if (
-                        now - self.last_alert_time
-                        > self.ALERT_COOLDOWN
-                    ):
+                if elapsed_silence > self.SILENCE_THRESHOLD_SEC:
+                    if now - self.last_alert_time > self.ALERT_COOLDOWN:
                         self.last_alert_time = now
-
                         if self.trigger_callback:
-                           self.trigger_callback(
-                            "elderly_silent",
-                            {
-                                "message": f"어르신 활동 감지 안 됨! ({self.SILENCE_THRESHOLD_SEC}초간 무음)"
-                            }
-                        )
-
+                            self.trigger_callback(
+                                "elderly_silent",
+                                {"message": f"어르신 활동 감지 안 됨! ({self.SILENCE_THRESHOLD_SEC}초간 무음)"}
+                            )
                         self.last_sound_time = now
 
             # ==========================
-            # AI 추론
+            # AI 추론 (버퍼 채우기 및 예측)
             # ==========================
             if self.audio_buffer is not None:
                 chunk_len = len(audio_1d)
 
                 if chunk_len <= self.input_features:
-                    self.audio_buffer[:-chunk_len] = (
-                        self.audio_buffer[chunk_len:]
-                    )
+                    self.audio_buffer[:-chunk_len] = self.audio_buffer[chunk_len:]
+                    self.audio_buffer[-chunk_len:] = audio_1d
 
-                    self.audio_buffer[-chunk_len:] = (
-                        audio_1d
-                    )
-
-                if (
-                    now - self.last_inference_time
-                    >= self.INFERENCE_INTERVAL
-                ):
+                if now - self.last_inference_time >= self.INFERENCE_INTERVAL:
                     self.last_inference_time = now
+                    result = self._classify_with_runner(self.audio_buffer)
 
-                    result = self._classify_with_runner(
-                        self.audio_buffer
-                    )
+                    if result and "result" in result:
+                        cls = result.get("result", {})
+                        if isinstance(cls, dict) and "classification" in cls:
+                            scores = cls.get("classification", {})
 
-                    if (
-                        result
-                        and "result" in result
-                    ):
-                        cls = result.get(
-                            "result",
-                            {},
-                        )
+                            # 💡 [수정 포인트 1] 모드별로 로그 출력을 분기합니다.
+                            if self.mode == "baby":
+                                print("🧠 [아기모드] AI 결과:", scores)
+                                print("👶 baby_cry =", scores.get("baby_cry", 0))
+                                print("🔊 noise =", scores.get("noise", 0))
+                            elif self.mode == "elderly":
+                                print("🧠 [독거노인] AI 결과:", scores)
+                                print("🧓 groan =", scores.get("groan", 0))
+                                print("🔊 noise =", scores.get("noise", 0))
 
-                        if (
-                            isinstance(cls, dict)
-                            and "classification" in cls
-                        ):
-                            scores = cls.get(
-                                "classification",
-                                {},
-                            )
-
-                            print(
-                                "🧠 AI 결과:",
-                                scores,
-                            )
-
-                            print(
-                                "👶 baby_cry =",
-                                scores.get(
-                                    "baby_cry",
-                                    0,
-                                ),
-                            )
-
-                            print(
-                                "🔊 noise =",
-                                scores.get(
-                                    "noise",
-                                    0,
-                                ),
-                            )
-
-                            baby_score = scores.get(
-                                "baby_cry",
-                                0,
-                            )
-
-                            if baby_score > 0.30:
-                                self.cry_count += 1
-                            else:
-                                self.cry_count = max(
-                                    0,
-                                    self.cry_count - 1,
-                                )
-
-                            print(
-                                f"👶 baby_cry={baby_score:.3f}, "
-                                f"noise={scores.get('noise', 0):.3f}, "
-                                f"cry_count={self.cry_count}"
-                            )
-
-                            if (
-                                self.mode == "baby"
-                                and self.cry_count >= 2
-                            ):
-                                self.cry_count = 0
-
-                                if (
-                                    now
-                                    - self.last_alert_time
-                                    > self.ALERT_COOLDOWN
-                                ):
+                            # 💡 [수정 포인트 2] 아기 모드 알림 처리
+                            baby_score = scores.get("baby_cry", 0)
+                            if self.mode == "baby" and baby_score >= 0.60:
+                                if now - self.last_alert_time > self.ALERT_COOLDOWN:
                                     self.last_alert_time = now
-
-                                    print("🚨 아기 울음 발생")
-
+                                    print(f"🚨 아기 울음 발생 (확률: {baby_score * 100:.1f}%)")
                                     if self.trigger_callback:
                                         self.trigger_callback(
-                                        "baby_cry",
-                                        {
-                                            "message": "👶 아기 울음 감지",
-                                            "score": round(baby_score * 100, 1)
-                                        }
-                                    )
-
-                            elif (
-                                self.mode == "elderly"
-                                and scores.get(
-                                    "groan",
-                                    0,
-                                )
-                                > 0.6
-                            ):
-                                if (
-                                    now
-                                    - self.last_alert_time
-                                    > self.ALERT_COOLDOWN
-                                ):
-                                    self.last_alert_time = now
-
-                                    if self.trigger_callback:
-                                        self.trigger_callback(
-                                            "sos",
-                                            f"🚨 어르신 소리 감지! "
-                                            f"(확률: "
-                                            f"{scores.get('groan', 0) * 100:.0f}%)",
+                                            "baby_cry",
+                                            {
+                                                "message": "👶 아기 울음 감지",
+                                                "score": round(baby_score * 100, 1),
+                                            },
                                         )
 
-                                self.last_sound_time = now
+                            # 💡 [수정 포인트 3] 독거노인 모드 알림 처리
+                            groan_score = scores.get("groan", 0)
+                            if self.mode == "elderly" and groan_score > 0.60:
+                                if now - self.last_alert_time > self.ALERT_COOLDOWN:
+                                    self.last_alert_time = now
+                                    print(f"🚨 어르신 신음 감지! (확률: {groan_score * 100:.0f}%)")
+                                    if self.trigger_callback:
+                                        # 기존 코드의 문자열 전달 방식을 아기 모드와 동일하게 dict 형태로 맞춰주면 일관성이 생깁니다.
+                                        self.trigger_callback(
+                                            "sos",
+                                            {
+                                                "message": f"🚨 어르신 소리 감지! (확률: {groan_score * 100:.0f}%)"
+                                            }
+                                        )
+                                    self.last_sound_time = now
