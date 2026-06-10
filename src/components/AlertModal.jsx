@@ -1,4 +1,5 @@
 import { AlertIcon } from "../icons";
+import { useEffect, useRef } from "react";
 
 export function AlertModal({
   alert,
@@ -9,6 +10,38 @@ export function AlertModal({
   requiresConfirm = false,
   isConfirming = false,
 }) {
+  const audioRef = useRef(null);
+  useEffect(() => {
+    if (!alert) return;
+
+    audioRef.current = new Audio("/alarm.mp3");
+    audioRef.current.loop = true;
+
+    audioRef.current.play().catch((err) => {
+      console.error("알람 재생 실패", err);
+    });
+
+    return () => {
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current.currentTime = 0;
+      }
+    };
+  }, [alert]);
+
+  const handleConfirm = () => {
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.currentTime = 0;
+    }
+
+    if (requiresConfirm) {
+      onConfirm?.();
+    } else {
+      onClose?.();
+    }
+  };
+
   if (!alert) {
     return null;
   }
@@ -63,7 +96,7 @@ export function AlertModal({
         <button
           className="mt-2 h-10 w-full cursor-pointer rounded-lg border border-[#e2e8f0] bg-white font-extrabold text-[#334155] disabled:cursor-not-allowed disabled:opacity-65"
           type="button"
-          onClick={requiresConfirm ? onConfirm : onClose}
+          onClick={handleConfirm}
           disabled={isConfirming}
         >
           확인
